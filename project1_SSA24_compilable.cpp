@@ -18,7 +18,7 @@ void func2(int fd) {
     if (len > 1024) 
         return;
 
-    buf = malloc(len+1); 
+    buf = (char*)malloc(len+1);     // made this (char*) to make it compilable
     read(fd, buf, len); 
     buf[len] = '\0';
 }
@@ -32,35 +32,38 @@ void func3() {
         char errormsg[1044]; 
         strncpy(errormsg, buffer,1024);   
         strcat(errormsg, " is not  a valid ID");
+        throw errormsg;                             // added otherwise doesnt make sense
     }
 }
 
 void func4(char *foo) {
     char *buffer = (char *)malloc(10 * sizeof(char));
-    strcpy(buffer, foo);
+    strcpy(buffer, foo);    // 1. easy heap BoF!
 }
 
 int main() {
     int y=10;
     int a[10];
 
-    func4("fooooooooooooooooooooooooooooooooooooooooooooooooooo");
+    // this causes malloc to explode
+    //func4("fooooooooooooooooooooooooooooooooooooooooooooooooooo");
 
-    func3();
+    func2(0);
 
-    // try catches do not exist in C 
     try { 
         func3();
     }
     catch(char *message){	
-        fprintf(stderr, message);
+        fprintf(stderr, message);       // 2. easy format string!
     }
     
     // aFile not declared
     //fprintf(aFile, "%s", "hello world");
 
+    // this is fine 
     while (y>=0) {  
-        a[y]=y;
+        printf("%d\n", y);
+        a[y]=y;     
         y=y-1;
     }
     return 0;
