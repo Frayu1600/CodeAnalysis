@@ -60,9 +60,7 @@ int main() {
     // aFile not declared
     //fprintf(aFile, "%s", "hello world");
 
-    // this is fine 
     while (y>=0) {  
-        printf("%d\n", y);
         a[y]=y;     
         y=y-1;
     }

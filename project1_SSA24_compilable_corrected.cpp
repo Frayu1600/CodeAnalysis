@@ -11,31 +11,36 @@ void func1(char *src) {
     }
 
     // added maximum length for security 
-    size_t MAX_SIZE = 1024;      // can be adjusted
-    size_t len = strlen(src);
+    const size_t MAX_SIZE = 1024;       
+    // function assumes src is null terminated
+    size_t len = strlen(src);           // Flawfinder: ignore
 
     // check on maximum length 
     if(len > MAX_SIZE) {
         len = MAX_SIZE;
-        src[len] = '\0';
+        src[MAX_SIZE-1] = '\0';
     }
 
-    char dst[len * sizeof(char) + 1];   // put +1 at the end for more clarity
-    strncpy(dst, src, strlen(src));     // removed "+ sizeof(char)"
+    // added +1 for more clarity and removed char
+    char dst[len+1];                    // Flawfinder: ignore
+    // removed "+ sizeof(char)"
+    strncpy(dst, src, len);             // Flawfinder: ignore
     dst[len] = '\0';                    // instead of strlen(dst)
 }
 
-// changed int fd into size_t fd
+// changed "int fd" into "size_t fd"
 void func2(size_t fd) { 
+    // added maximum length for security
+    const size_t MAX_SIZE = 1024;       
     char* buf;
     size_t len;
+
     // checking partial read
-    size_t n = read(fd, &len, sizeof(len)); 
+    size_t n = read(fd, &len, sizeof(len));     // Flawfinder: ignore
     if (n != sizeof(len)) {
         return;
     }
-
-    if (len > 1024) {
+    if (len > MAX_SIZE) {
         return;
     }
 
@@ -46,70 +51,94 @@ void func2(size_t fd) {
     }
 
     // checking partial read
-    n = read(fd, buf, len); 
+    n = read(fd, buf, len);         // Flawfinder: ignore
     if (n != len) {
         free(buf);
         return;
     }
     buf[len] = '\0';
-
-    // added heap free
     free(buf);
 }
 
 void func3() {	
     // added size variable to make couting easier and more reliable
     const size_t BUF_SIZE = 1024;
-    char buffer[BUF_SIZE];
+    char buffer[BUF_SIZE];                          // Flawfinder: ignore
     
     printf("Please enter your user id :");
-    fgets(buffer, BUF_SIZE-1, stdin);
-    buffer[BUF_SIZE-1] = '\0';
+    if(!fgets(buffer, BUF_SIZE, stdin)) {
+        // in case of error
+        exit(1);
+    }
+    // buffer is already string terminated 
+    // here we substitute \n with string terminator instead
+    buffer[strlen(buffer)-1] = '\0';                // Flawfinder: ignore        
 
     if (!isalpha(buffer[0])) {   
         // added to be sure of not failing the count 
-        const char* is_not_valid_ID = " is not  a valid ID";
-        const size_t errormsg_len = BUF_SIZE + strlen(is_not_valid_ID) + 1;
+        const char* is_not_valid_ID = " is not  a valid ID"; 
 
-        printf("%ld\n", errormsg_len);
-        char errormsg[1044];  // does not need +1
+        // changed into malloc() to allow for variable length array
+        // it is to avoid counting strlen(is_not_valid_ID) manually
+        // not actually a vulnerability, it is to avoid a bad practice 
+        char *errormsg = (char *)malloc(BUF_SIZE + strlen(is_not_valid_ID) + 1);    // Flawfinder: ignore 
+        if(!errormsg) {
+            exit(1);
+        }
 
-        strncpy(errormsg, buffer, BUF_SIZE);   
-        strcat(errormsg, is_not_valid_ID);          // is fine because is null-terminated
-        throw errormsg;                             // added otherwise doesnt make sense
+        // may not copy string terminator, added for good practice
+        strncpy(errormsg, buffer, BUF_SIZE-1);        // Flawfinder: ignore
+        errormsg[BUF_SIZE-1] = '\0';
+        // this is fine because is_not_valid_ID is null terminated and strcat attaches it
+        strcat(errormsg, is_not_valid_ID);            // Flawfinder: ignore
+        // added otherwise function doesnt make sense
+        throw errormsg;                             
+
+        free(errormsg);
     }
 }
 
 void func4(char *foo) {
-    // added this variable 
+    // checking if null 
+    if(!foo) {
+        return;
+    }
+
+    // added size variable to make couting easier and more reliable
     const size_t BUF_SIZE = 10;
     char *buffer = (char *)malloc(BUF_SIZE * sizeof(char));
+    // checking malloc failure 
+    if(!buffer) {
+        return;
+    }
 
     // copies at most 10 bytes
-    strncpy(buffer, foo, BUF_SIZE);   
-    buffer[BUF_SIZE-1] = '\0';        // added string terminator 
-    printf("%s\n", buffer); 
+    strncpy(buffer, foo, BUF_SIZE-1);   // Flawfinder: ignore
+    buffer[BUF_SIZE-1] = '\0';          // added string terminator
+
+    free(buffer);
 }
 
 int main() {
     int i=10;       // renamed into i for better understanding
     int a[10];
 
-    // this does not cause malloc to crash anymore
+    // does not cause malloc to crash anymore
     func4("fooooooooooooooooooooooooooooooooooooooooooooooooooo");
 
     try { 
         func3();
     }
     catch(char* message){	
-        fprintf(stderr, "%s", message);       // added "%s" string modifier 
+        fprintf(stderr, "%s\n", message);       // added "%s" string modifier 
     }
     
     // aFile not declared
     //fprintf(aFile, "%s", "hello world");
  
-    while (i>=0) {  
-        a[i--]=i;   // removed y=y-1 and added postdecrement     
+    // added predecrement
+    while (--i>=0) {  
+        a[i]=i;
     }
     return 0;
 }
